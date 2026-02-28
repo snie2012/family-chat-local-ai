@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Pressable } from "react-native";
 import { Message, User } from "../types";
 import { useTheme, Theme } from "../contexts/ThemeContext";
+
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "👏"];
 
 function renderWithMentions(body: string, isOwn: boolean, theme: Theme) {
   // Split on @Word (including spaces in display names via non-greedy match)
@@ -23,6 +25,7 @@ interface Props {
   currentUser: User | null;
   showSenderName: boolean;
   onRetry?: (messageId: string) => void;
+  onReact?: (messageId: string, emoji: string) => void;
 }
 
 function formatTime(iso: string): string {
@@ -30,11 +33,20 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-export function MessageBubble({ message, currentUser, showSenderName, onRetry }: Props) {
+export function MessageBubble({ message, currentUser, showSenderName, onRetry, onReact }: Props) {
   const theme = useTheme();
   const isOwn = message.senderId === currentUser?.id;
   const isBot = message.sender.isBot;
   const [thinkExpanded, setThinkExpanded] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+
+  // Group reactions by emoji
+  const reactionGroups: Record<string, string[]> = {};
+  for (const r of message.reactions ?? []) {
+    if (!reactionGroups[r.emoji]) reactionGroups[r.emoji] = [];
+    reactionGroups[r.emoji].push(r.userId);
+  }
+  const hasReactions = Object.keys(reactionGroups).length > 0;
 
   const hasThinking = isBot && ((message.thinkingBody ?? "").length > 0);
 
@@ -80,36 +92,82 @@ export function MessageBubble({ message, currentUser, showSenderName, onRetry }:
           </View>
         )}
 
-        <View style={bubbleStyle}>
-          {/* Show a subtle placeholder while only thinking tokens have arrived */}
-          {message.isThinking && message.body === "" ? (
-            <Text style={[textStyle, { color: theme.textMuted }]}>
-              {"  "}
-              <Text style={styles.cursor}>▊</Text>
-            </Text>
-          ) : (
-            <Text style={textStyle}>
-              {renderWithMentions(message.body, isOwn, theme)}
-              {message.isStreaming && !message.isThinking ? (
+        <TouchableOpacity
+          activeOpacity={1}
+          onLongPress={() => !message.isPending && !message.isFailed && setShowPicker(true)}
+          delayLongPress={400}
+        >
+          <View style={bubbleStyle}>
+            {/* Show a subtle placeholder while only thinking tokens have arrived */}
+            {message.isThinking && message.body === "" ? (
+              <Text style={[textStyle, { color: theme.textMuted }]}>
+                {"  "}
                 <Text style={styles.cursor}>▊</Text>
-              ) : null}
-            </Text>
-          )}
-          <View style={styles.timestampRow}>
-            {message.isPending && (
-              <ActivityIndicator size={10} color={theme.ownTimestamp} style={styles.pendingSpinner} />
+              </Text>
+            ) : (
+              <Text style={textStyle}>
+                {renderWithMentions(message.body, isOwn, theme)}
+                {message.isStreaming && !message.isThinking ? (
+                  <Text style={styles.cursor}>▊</Text>
+                ) : null}
+              </Text>
             )}
-            <Text style={[styles.timestamp, { color: isOwn ? theme.ownTimestamp : theme.otherTimestamp }, message.isFailed && styles.failedTimestamp]}>
-              {statusLabel}
-            </Text>
-            {message.isFailed && (
-              <TouchableOpacity onPress={() => onRetry?.(message.id)} style={styles.retryBtn}>
-                <Text style={styles.retryText}>Retry</Text>
-              </TouchableOpacity>
-            )}
+            <View style={styles.timestampRow}>
+              {message.isPending && (
+                <ActivityIndicator size={10} color={theme.ownTimestamp} style={styles.pendingSpinner} />
+              )}
+              <Text style={[styles.timestamp, { color: isOwn ? theme.ownTimestamp : theme.otherTimestamp }, message.isFailed && styles.failedTimestamp]}>
+                {statusLabel}
+              </Text>
+              {message.isFailed && (
+                <TouchableOpacity onPress={() => onRetry?.(message.id)} style={styles.retryBtn}>
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
+
+        {/* Reaction badges */}
+        {hasReactions && (
+          <View style={[styles.reactionsRow, isOwn && styles.reactionsRowRight]}>
+            {Object.entries(reactionGroups).map(([emoji, userIds]) => {
+              const iMine = userIds.includes(currentUser?.id ?? "");
+              return (
+                <TouchableOpacity
+                  key={emoji}
+                  style={[styles.reactionBadge, { backgroundColor: theme.surface, borderColor: iMine ? theme.primary : theme.border }]}
+                  onPress={() => onReact?.(message.id, emoji)}
+                >
+                  <Text style={styles.reactionEmoji}>{emoji}</Text>
+                  {userIds.length > 1 && (
+                    <Text style={[styles.reactionCount, { color: iMine ? theme.primary : theme.textSecondary }]}>
+                      {userIds.length}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </View>
+
+      {/* Emoji picker modal */}
+      <Modal visible={showPicker} transparent animationType="fade" onRequestClose={() => setShowPicker(false)}>
+        <Pressable style={styles.pickerBackdrop} onPress={() => setShowPicker(false)}>
+          <View style={[styles.pickerRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            {QUICK_REACTIONS.map((emoji) => (
+              <TouchableOpacity
+                key={emoji}
+                style={styles.pickerEmojiBtn}
+                onPress={() => { onReact?.(message.id, emoji); setShowPicker(false); }}
+              >
+                <Text style={styles.pickerEmojiText}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -208,5 +266,59 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#fff",
     fontWeight: "600",
+  },
+  reactionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  reactionsRowRight: {
+    justifyContent: "flex-end",
+  },
+  reactionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 2,
+  },
+  reactionEmoji: {
+    fontSize: 14,
+  },
+  reactionCount: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickerRow: {
+    flexDirection: "row",
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 8,
+    gap: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  pickerEmojiBtn: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+  },
+  pickerEmojiText: {
+    fontSize: 24,
   },
 });

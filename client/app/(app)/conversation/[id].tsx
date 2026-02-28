@@ -35,6 +35,7 @@ export default function ConversationScreen() {
     hasMore,
     sendMessage,
     retryMessage,
+    toggleReaction,
     loadMore,
     typingUsers,
   } = useMessages(id, user);
@@ -80,6 +81,7 @@ export default function ConversationScreen() {
         onLoadMore={loadMore}
         typingUsers={typingUsers}
         onRetry={retryMessage}
+        onReact={toggleReaction}
       />
       <MessageInput
         conversationId={id}

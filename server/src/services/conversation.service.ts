@@ -10,6 +10,11 @@ const userSelect = {
   createdAt: true,
 };
 
+const reactionSelect = {
+  emoji: true,
+  userId: true,
+};
+
 const messageWithSenderSelect = {
   id: true,
   conversationId: true,
@@ -18,6 +23,7 @@ const messageWithSenderSelect = {
   isStreaming: true,
   createdAt: true,
   sender: { select: userSelect },
+  reactions: { select: reactionSelect },
 };
 
 export async function getUserConversations(userId: string) {
@@ -129,7 +135,7 @@ export async function getConversationMessages(
 ) {
   const messages = await prisma.message.findMany({
     where: { conversationId },
-    include: { sender: { select: userSelect } },
+    include: { sender: { select: userSelect }, reactions: { select: reactionSelect } },
     orderBy: { createdAt: "desc" },
     take: limit + 1,
     ...(cursor

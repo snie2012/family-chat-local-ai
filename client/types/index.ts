@@ -8,6 +8,11 @@ export interface User {
   createdAt: string;
 }
 
+export interface MessageReaction {
+  emoji: string;
+  userId: string;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -20,6 +25,7 @@ export interface Message {
   isFailed?: boolean;      // message failed to send
   createdAt: string;
   sender: User;
+  reactions?: MessageReaction[];
 }
 
 export interface Conversation {

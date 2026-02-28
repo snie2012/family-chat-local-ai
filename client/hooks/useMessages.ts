@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "../lib/api";
 import { useSocket } from "../contexts/SocketContext";
-import { Message, User } from "../types";
+import { Message, MessageReaction, User } from "../types";
 
 interface UseMessagesResult {
   messages: Message[];
@@ -10,6 +10,7 @@ interface UseMessagesResult {
   hasMore: boolean;
   sendMessage: (body: string) => void;
   retryMessage: (messageId: string) => void;
+  toggleReaction: (messageId: string, emoji: string) => void;
   loadMore: () => void;
   typingUsers: string[];
 }
@@ -198,6 +199,18 @@ export function useMessages(conversationId: string, currentUser: User | null): U
       });
     };
 
+    const handleReactionUpdated = ({
+      messageId,
+      reactions,
+    }: {
+      messageId: string;
+      reactions: MessageReaction[];
+    }) => {
+      setMessages((prev) =>
+        prev.map((m) => m.id === messageId ? { ...m, reactions } : m)
+      );
+    };
+
     socket.on("new_message", handleNewMessage);
     socket.on("message_stream_start", handleStreamStart);
     socket.on("message_stream_think_chunk", handleThinkChunk);
@@ -205,6 +218,7 @@ export function useMessages(conversationId: string, currentUser: User | null): U
     socket.on("message_stream_end", handleStreamEnd);
     socket.on("user_typing", handleUserTyping);
     socket.on("user_stopped_typing", handleUserStoppedTyping);
+    socket.on("reaction_updated", handleReactionUpdated);
 
     return () => {
       socket.emit("leave_room", { conversationId });
@@ -215,6 +229,7 @@ export function useMessages(conversationId: string, currentUser: User | null): U
       socket.off("message_stream_end", handleStreamEnd);
       socket.off("user_typing", handleUserTyping);
       socket.off("user_stopped_typing", handleUserStoppedTyping);
+      socket.off("reaction_updated", handleReactionUpdated);
     };
   }, [socket, conversationId, currentUser?.id]);
 
@@ -273,6 +288,14 @@ export function useMessages(conversationId: string, currentUser: User | null): U
     [sendMessage]
   );
 
+  const toggleReaction = useCallback(
+    (messageId: string, emoji: string) => {
+      if (!socket) return;
+      socket.emit("toggle_reaction", { messageId, emoji });
+    },
+    [socket]
+  );
+
   const typingUsers = Object.values(typingUsersMap);
-  return { messages, isLoading, isFetchingMore, hasMore, sendMessage, retryMessage, loadMore, typingUsers };
+  return { messages, isLoading, isFetchingMore, hasMore, sendMessage, retryMessage, toggleReaction, loadMore, typingUsers };
 }

@@ -147,6 +147,40 @@ export function createSocketServer(
       }
     );
 
+    // Toggle a reaction on a message
+    socket.on(
+      "toggle_reaction",
+      async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
+        if (!messageId || !emoji) return;
+
+        const message = await prisma.message.findUnique({
+          where: { id: messageId },
+          select: { conversationId: true },
+        });
+        if (!message) return;
+
+        const isMember = await isUserInConversation(userId, message.conversationId);
+        if (!isMember) return;
+
+        const existing = await prisma.messageReaction.findUnique({
+          where: { messageId_userId_emoji: { messageId, userId, emoji } },
+        });
+
+        if (existing) {
+          await prisma.messageReaction.delete({ where: { id: existing.id } });
+        } else {
+          await prisma.messageReaction.create({ data: { messageId, userId, emoji } });
+        }
+
+        const reactions = await prisma.messageReaction.findMany({
+          where: { messageId },
+          select: { emoji: true, userId: true },
+        });
+
+        io.to(message.conversationId).emit("reaction_updated", { messageId, reactions });
+      }
+    );
+
     // Typing indicators
     socket.on("typing_start", ({ conversationId }: { conversationId: string }) => {
       socket.to(conversationId).emit("user_typing", {

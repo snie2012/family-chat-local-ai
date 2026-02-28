@@ -43,6 +43,7 @@ interface Props {
   onLoadMore: () => void;
   typingUsers: string[];
   onRetry: (messageId: string) => void;
+  onReact: (messageId: string, emoji: string) => void;
 }
 
 export function MessageList({
@@ -54,6 +55,7 @@ export function MessageList({
   onLoadMore,
   typingUsers,
   onRetry,
+  onReact,
 }: Props) {
 
   const theme = useTheme();
@@ -112,6 +114,7 @@ export function MessageList({
         currentUser={currentUser}
         showSenderName={showSenderName}
         onRetry={onRetry}
+        onReact={onReact}
       />
     );
   };
