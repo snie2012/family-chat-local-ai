@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useSocket } from "../contexts/SocketContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { User } from "../types";
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
 export function MessageInput({ conversationId, members = [], onSend }: Props) {
   const [text, setText] = useState("");
   const { socket } = useSocket();
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const typingRef = useRef(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,17 +104,17 @@ export function MessageInput({ conversationId, members = [], onSend }: Props) {
   };
 
   return (
-    <View style={[styles.wrapper, { paddingBottom: insets.bottom }]}>
+    <View style={[styles.wrapper, { paddingBottom: insets.bottom, backgroundColor: theme.surface, borderTopColor: theme.border }]}>
       {/* @mention suggestions */}
       {mentionQuery !== null && filteredMembers.length > 0 && (
-        <View style={styles.mentionList}>
+        <View style={[styles.mentionList, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
           <FlatList
             data={filteredMembers}
             keyExtractor={(u) => u.id}
             keyboardShouldPersistTaps="always"
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.mentionItem}
+                style={[styles.mentionItem, { borderBottomColor: theme.borderLight }]}
                 onPress={() => insertMention(item)}
               >
                 <View style={[styles.mentionAvatar, { backgroundColor: item.avatarColor ?? "#6b7280" }]}>
@@ -122,8 +124,8 @@ export function MessageInput({ conversationId, members = [], onSend }: Props) {
                   }
                 </View>
                 <View>
-                  <Text style={styles.mentionName}>{item.displayName}</Text>
-                  <Text style={styles.mentionUsername}>
+                  <Text style={[styles.mentionName, { color: theme.text }]}>{item.displayName}</Text>
+                  <Text style={[styles.mentionUsername, { color: theme.textMuted }]}>
                     {item.isBot ? "AI Assistant" : `@${item.username}`}
                   </Text>
                 </View>
@@ -136,22 +138,22 @@ export function MessageInput({ conversationId, members = [], onSend }: Props) {
       <View style={styles.container}>
         <TextInput
           ref={inputRef}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.inputText }]}
           value={text}
           onChangeText={handleChangeText}
           placeholder="Message..."
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={theme.placeholder}
           multiline
           maxLength={4000}
           onKeyPress={handleKeyPress}
           onBlur={handleStopTyping}
         />
         <TouchableOpacity
-          style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
+          style={[styles.sendBtn, { backgroundColor: text.trim() ? theme.sendBtn : theme.sendBtnDisabled }]}
           onPress={handleSend}
           disabled={!text.trim()}
         >
-          <Ionicons name="send" size={20} color={text.trim() ? "#fff" : "#9ca3af"} />
+          <Ionicons name="send" size={20} color={text.trim() ? "#fff" : theme.textMuted} />
         </TouchableOpacity>
       </View>
     </View>
@@ -160,15 +162,11 @@ export function MessageInput({ conversationId, members = [], onSend }: Props) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
   },
   mentionList: {
     maxHeight: 180,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    backgroundColor: "#fff",
   },
   mentionItem: {
     flexDirection: "row",
@@ -177,7 +175,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
   },
   mentionAvatar: {
     width: 32,
@@ -187,8 +184,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   mentionAvatarText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  mentionName: { fontSize: 14, fontWeight: "600", color: "#111827" },
-  mentionUsername: { fontSize: 12, color: "#9ca3af" },
+  mentionName: { fontSize: 14, fontWeight: "600" },
+  mentionUsername: { fontSize: 12 },
   container: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -200,23 +197,17 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     maxHeight: 120,
-    backgroundColor: "#f3f4f6",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 16,
-    color: "#111827",
     ...(Platform.OS === "web" ? { outlineStyle: "none" } as Record<string, unknown> : {}),
   },
   sendBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#3b82f6",
     alignItems: "center",
     justifyContent: "center",
-  },
-  sendBtnDisabled: {
-    backgroundColor: "#e5e7eb",
   },
 });

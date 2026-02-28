@@ -14,6 +14,7 @@ import {
 import { useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../../lib/api";
+import { useTheme } from "../../contexts/ThemeContext";
 import { User } from "../../types";
 
 interface BotSettings {
@@ -24,6 +25,7 @@ interface BotSettings {
 
 export default function AdminSettingsScreen() {
   const navigation = useNavigation();
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [settings, setSettings] = useState<BotSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,23 +104,25 @@ export default function AdminSettingsScreen() {
     }
   };
 
+  const inputStyle = [styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }];
+
   if (isLoading || !settings) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+      <View style={[styles.centered, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
       {/* Think Mode */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>REASONING</Text>
+      <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>REASONING</Text>
         <View style={styles.row}>
           <View style={styles.rowText}>
-            <Text style={styles.label}>Think Mode</Text>
-            <Text style={styles.sublabel}>
+            <Text style={[styles.label, { color: theme.text }]}>Think Mode</Text>
+            <Text style={[styles.sublabel, { color: theme.textSecondary }]}>
               Chain-of-thought reasoning before responding.{"\n"}
               Supported by: qwen3, deepseek-r1, and others.{"\n"}
               Thinking process is shown in chat. Slower but more accurate.
@@ -126,48 +130,45 @@ export default function AdminSettingsScreen() {
           </View>
           <Switch
             value={settings.thinkMode}
-            onValueChange={(v) => {
-              setSettings({ ...settings, thinkMode: v });
-              setSaved(false);
-            }}
-            trackColor={{ true: "#3b82f6", false: "#d1d5db" }}
+            onValueChange={(v) => { setSettings({ ...settings, thinkMode: v }); setSaved(false); }}
+            trackColor={{ true: theme.primary, false: theme.border }}
             thumbColor="#fff"
           />
         </View>
       </View>
 
       {/* Model */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>MODEL</Text>
+      <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>MODEL</Text>
         <View style={styles.fieldRow}>
-          <Text style={styles.label}>Ollama model name</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Ollama model name</Text>
           <TextInput
-            style={styles.input}
+            style={inputStyle}
             value={settings.model}
             onChangeText={(v) => { setSettings({ ...settings, model: v }); setSaved(false); }}
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="e.g. qwen3:4b, llama3.2, mistral"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={theme.placeholder}
           />
         </View>
       </View>
 
       {/* System Prompt */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>SYSTEM PROMPT</Text>
+      <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>SYSTEM PROMPT</Text>
         <TextInput
-          style={[styles.input, styles.promptInput]}
+          style={[...inputStyle, styles.promptInput]}
           value={settings.systemPrompt}
           onChangeText={(v) => { setSettings({ ...settings, systemPrompt: v }); setSaved(false); }}
           multiline
           placeholder="System prompt for the AI assistant..."
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={theme.placeholder}
         />
       </View>
 
       <TouchableOpacity
-        style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+        style={[styles.saveBtn, { backgroundColor: theme.primary }, isSaving && { opacity: 0.6 }]}
         onPress={handleSave}
         disabled={isSaving}
       >
@@ -179,55 +180,30 @@ export default function AdminSettingsScreen() {
       </TouchableOpacity>
 
       {/* Members */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>MEMBERS</Text>
+      <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>MEMBERS</Text>
         {members.map((m) => (
           <View key={m.id} style={styles.memberRow}>
             <View style={[styles.memberAvatar, { backgroundColor: m.avatarColor ?? "#6b7280" }]}>
               <Text style={styles.memberAvatarText}>{m.displayName[0].toUpperCase()}</Text>
             </View>
             <View>
-              <Text style={styles.label}>{m.displayName}</Text>
-              <Text style={styles.sublabel}>@{m.username}{m.isAdmin ? " · admin" : ""}</Text>
+              <Text style={[styles.label, { color: theme.text }]}>{m.displayName}</Text>
+              <Text style={[styles.sublabel, { color: theme.textSecondary }]}>@{m.username}{m.isAdmin ? " · admin" : ""}</Text>
             </View>
           </View>
         ))}
 
-        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>ADD MEMBER</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Username (lowercase, no spaces)"
-          value={newUsername}
-          onChangeText={setNewUsername}
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholderTextColor="#9ca3af"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Display name"
-          value={newDisplayName}
-          onChangeText={setNewDisplayName}
-          placeholderTextColor="#9ca3af"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password (min 8 chars)"
-          value={newPassword}
-          onChangeText={setNewPassword}
-          secureTextEntry
-          placeholderTextColor="#9ca3af"
-        />
+        <Text style={[styles.sectionTitle, { marginTop: 8, color: theme.textMuted }]}>ADD MEMBER</Text>
+        <TextInput style={inputStyle} placeholder="Username (lowercase, no spaces)" value={newUsername} onChangeText={setNewUsername} autoCapitalize="none" autoCorrect={false} placeholderTextColor={theme.placeholder} />
+        <TextInput style={inputStyle} placeholder="Display name" value={newDisplayName} onChangeText={setNewDisplayName} placeholderTextColor={theme.placeholder} />
+        <TextInput style={inputStyle} placeholder="Password (min 8 chars)" value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholderTextColor={theme.placeholder} />
         <TouchableOpacity
-          style={[styles.saveBtn, (!newUsername || !newDisplayName || !newPassword || isCreating) && styles.saveBtnDisabled]}
+          style={[styles.saveBtn, { backgroundColor: theme.primary }, (!newUsername || !newDisplayName || !newPassword || isCreating) && { opacity: 0.5 }]}
           onPress={handleCreateMember}
           disabled={!newUsername || !newDisplayName || !newPassword || isCreating}
         >
-          {isCreating ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveBtnText}>Add Member</Text>
-          )}
+          {isCreating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Add Member</Text>}
         </TouchableOpacity>
       </View>
     </ScrollView>

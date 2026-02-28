@@ -2,12 +2,14 @@ import { Stack, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { SocketProvider } from "../../contexts/SocketContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { registerPushNotifications } from "../../lib/push";
 import { ActivityIndicator, View } from "react-native";
 
 export default function AppLayout() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const theme = useTheme();
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -29,6 +31,9 @@ export default function AppLayout() {
 
   if (!user) return null;
 
+  const headerStyle = { backgroundColor: theme.surface };
+  const headerTitleStyle = { color: theme.text };
+
   return (
     <SocketProvider>
       <Stack>
@@ -36,17 +41,18 @@ export default function AppLayout() {
           name="index"
           options={{
             title: "Family Chat",
-            headerStyle: { backgroundColor: "#fff" },
-            headerTitleStyle: { fontWeight: "700" },
+            headerStyle,
+            headerTitleStyle: { ...headerTitleStyle, fontWeight: "700" },
             headerShadowVisible: true,
           }}
         />
         <Stack.Screen
           name="conversation/[id]"
           options={{
-            headerStyle: { backgroundColor: "#fff" },
-            headerTitleStyle: { fontWeight: "600" },
+            headerStyle,
+            headerTitleStyle: { ...headerTitleStyle, fontWeight: "600" },
             headerBackTitle: "Chats",
+            headerTintColor: theme.primary,
           }}
         />
         <Stack.Screen
@@ -54,8 +60,8 @@ export default function AppLayout() {
           options={{
             title: "New Chat",
             presentation: "modal",
-            headerStyle: { backgroundColor: "#fff" },
-            headerTitleStyle: { fontWeight: "600" },
+            headerStyle,
+            headerTitleStyle: { ...headerTitleStyle, fontWeight: "600" },
           }}
         />
         <Stack.Screen
@@ -63,8 +69,8 @@ export default function AppLayout() {
           options={{
             title: "Bot Settings",
             presentation: "modal",
-            headerStyle: { backgroundColor: "#fff" },
-            headerTitleStyle: { fontWeight: "600" },
+            headerStyle,
+            headerTitleStyle: { ...headerTitleStyle, fontWeight: "600" },
           }}
         />
       </Stack>

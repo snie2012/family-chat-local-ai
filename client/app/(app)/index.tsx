@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { useConversations } from "../../hooks/useConversations";
 import { ConversationItem } from "../../components/ConversationItem";
 import { useNavigation } from "expo-router";
@@ -20,6 +21,7 @@ import { getLastSeen } from "../../lib/storage";
 export default function ConversationsScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const theme = useTheme();
   const { conversations, isLoading, refresh } = useConversations();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -66,7 +68,7 @@ export default function ConversationsScreen() {
               {user?.displayName?.[0]?.toUpperCase() ?? "?"}
             </Text>
           </View>
-          <Text style={styles.headerName}>{user?.displayName}</Text>
+          <Text style={[styles.headerName, { color: theme.text }]}>{user?.displayName}</Text>
         </View>
       ),
     });
@@ -74,19 +76,19 @@ export default function ConversationsScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+      <View style={[styles.centered, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {conversations.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>💬</Text>
-          <Text style={styles.emptyTitle}>No conversations yet</Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>No conversations yet</Text>
+          <Text style={[styles.emptySubtitle, { color: theme.textMuted }]}>
             Tap the pencil icon to start a chat
           </Text>
         </View>

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet, FlatList, Platform, TouchableOpacity } from "react-native";
 import { Message, User } from "../types";
 import { MessageBubble } from "./MessageBubble";
+import { useTheme } from "../contexts/ThemeContext";
 
 type DateSeparator = { __sep: true; id: string; label: string };
 type ListItem = Message | DateSeparator;
@@ -54,6 +55,8 @@ export function MessageList({
   typingUsers,
   onRetry,
 }: Props) {
+
+  const theme = useTheme();
   const flatListRef = useRef<FlatList>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const listItems = buildListItems(messages);
@@ -76,16 +79,16 @@ export function MessageList({
 
   if (isLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+      <View style={[styles.centered, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   if (messages.length === 0) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.emptyText}>No messages yet. Say hello!</Text>
+      <View style={[styles.centered, { backgroundColor: theme.background }]}>
+        <Text style={[styles.emptyText, { color: theme.textMuted }]}>No messages yet. Say hello!</Text>
       </View>
     );
   }
@@ -94,9 +97,9 @@ export function MessageList({
     if (isSeparator(item)) {
       return (
         <View style={styles.separatorRow}>
-          <View style={styles.separatorLine} />
-          <Text style={styles.separatorLabel}>{item.label}</Text>
-          <View style={styles.separatorLine} />
+          <View style={[styles.separatorLine, { backgroundColor: theme.separatorLine }]} />
+          <Text style={[styles.separatorLabel, { color: theme.separatorText }]}>{item.label}</Text>
+          <View style={[styles.separatorLine, { backgroundColor: theme.separatorLine }]} />
         </View>
       );
     }
@@ -135,7 +138,7 @@ export function MessageList({
         ListFooterComponent={
           typingUsers.length > 0 ? (
             <View style={styles.typingRow}>
-              <Text style={styles.typingText}>
+              <Text style={[styles.typingText, { color: theme.textMuted }]}>
                 {typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing...
               </Text>
             </View>

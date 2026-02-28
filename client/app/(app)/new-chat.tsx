@@ -15,12 +15,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { User } from "../../types";
 
 export default function NewChatScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { user: currentUser } = useAuth();
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [users, setUsers] = useState<User[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -100,40 +102,40 @@ export default function NewChatScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+      <View style={[styles.centered, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Group toggle — only shown when 2+ selected or manually enabled */}
       {(isGroup || selected.size > 1) && (
         <>
-          <View style={styles.groupToggle}>
-            <Text style={styles.groupLabel}>Group chat</Text>
+          <View style={[styles.groupToggle, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+            <Text style={[styles.groupLabel, { color: theme.text }]}>Group chat</Text>
             <Switch
               value={isGroup}
               onValueChange={setIsGroup}
-              trackColor={{ true: "#3b82f6" }}
+              trackColor={{ true: theme.primary }}
             />
           </View>
           {isGroup && (
             <TextInput
-              style={styles.groupNameInput}
+              style={[styles.groupNameInput, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
               placeholder="Group name..."
               value={groupName}
               onChangeText={setGroupName}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.placeholder}
             />
           )}
         </>
       )}
 
       {selected.size > 0 && (
-        <View style={styles.selectedBar}>
-          <Text style={styles.selectedText}>{selected.size} selected</Text>
+        <View style={[styles.selectedBar, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+          <Text style={[styles.selectedText, { color: theme.primary }]}>{selected.size} selected</Text>
         </View>
       )}
 
@@ -143,7 +145,7 @@ export default function NewChatScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: insets.bottom }}
         ListHeaderComponent={
-          <Text style={styles.sectionLabel}>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>
             {users.some((u) => u.isBot) ? "AI ASSISTANT" : ""}
           </Text>
         }
@@ -151,7 +153,7 @@ export default function NewChatScreen() {
           const isSelected = selected.has(item.id);
           return (
             <TouchableOpacity
-              style={styles.userRow}
+              style={[styles.userRow, { backgroundColor: theme.surface, borderBottomColor: theme.borderLight }]}
               onPress={() => toggleUser(item.id)}
               activeOpacity={0.7}
             >
@@ -165,13 +167,13 @@ export default function NewChatScreen() {
                 )}
               </View>
               <View style={styles.userInfo}>
-                <Text style={styles.displayName}>{item.displayName}</Text>
-                <Text style={styles.username}>
+                <Text style={[styles.displayName, { color: theme.text }]}>{item.displayName}</Text>
+                <Text style={[styles.username, { color: theme.textMuted }]}>
                   {item.isBot ? "AI Assistant" : `@${item.username}`}
                 </Text>
               </View>
               {isSelected && (
-                <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
+                <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
               )}
             </TouchableOpacity>
           );

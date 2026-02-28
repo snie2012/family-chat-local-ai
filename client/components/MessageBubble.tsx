@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Message, User } from "../types";
+import { useTheme, Theme } from "../contexts/ThemeContext";
 
-function renderWithMentions(body: string, isOwn: boolean) {
+function renderWithMentions(body: string, isOwn: boolean, theme: Theme) {
   // Split on @Word (including spaces in display names via non-greedy match)
   const parts = body.split(/(@\S+(?:\s\S+)*)/g);
   return parts.map((part, i) => {
     if (part.startsWith("@")) {
       return (
-        <Text key={i} style={isOwn ? styles.mentionOwn : styles.mentionOther}>
+        <Text key={i} style={{ color: isOwn ? theme.mentionOwnText : theme.mentionOtherText, fontWeight: "700" }}>
           {part}
         </Text>
       );
@@ -30,21 +31,17 @@ function formatTime(iso: string): string {
 }
 
 export function MessageBubble({ message, currentUser, showSenderName, onRetry }: Props) {
+  const theme = useTheme();
   const isOwn = message.senderId === currentUser?.id;
   const isBot = message.sender.isBot;
   const [thinkExpanded, setThinkExpanded] = useState(false);
 
   const hasThinking = isBot && ((message.thinkingBody ?? "").length > 0);
 
-  const bubbleStyle = [
-    styles.bubble,
-    isOwn ? styles.ownBubble : isBot ? styles.botBubble : styles.otherBubble,
-  ];
-
-  const textStyle = [
-    styles.bodyText,
-    isOwn ? styles.ownText : styles.otherText,
-  ];
+  const bubbleBg = isOwn ? theme.ownBubble : isBot ? theme.botBubble : theme.otherBubble;
+  const bubbleStyle = [styles.bubble, { backgroundColor: bubbleBg, opacity: message.isPending ? 0.7 : 1 }];
+  const bodyColor = isOwn ? theme.ownBubbleText : theme.otherBubbleText;
+  const textStyle = [styles.bodyText, { color: bodyColor }];
 
   const statusLabel = message.isFailed
     ? "Failed"
@@ -60,7 +57,7 @@ export function MessageBubble({ message, currentUser, showSenderName, onRetry }:
     <View style={[styles.row, isOwn ? styles.rowRight : styles.rowLeft]}>
       <View style={styles.bubbleWrapper}>
         {showSenderName && !isOwn && (
-          <Text style={[styles.senderName, isBot && styles.botName]}>
+          <Text style={[styles.senderName, { color: theme.textSecondary }, isBot && { color: theme.botName }]}>
             {isBot ? "🤖 " : ""}{message.sender.displayName}
           </Text>
         )}
@@ -72,27 +69,27 @@ export function MessageBubble({ message, currentUser, showSenderName, onRetry }:
             style={styles.thinkHeader}
             activeOpacity={0.7}
           >
-            <Text style={styles.thinkHeaderText}>
+            <Text style={[styles.thinkHeaderText, { color: theme.thinkingHeader }]}>
               {message.isThinking ? "⟳ Thinking..." : `${thinkExpanded ? "▾" : "▸"} Reasoning`}
             </Text>
           </TouchableOpacity>
         )}
         {hasThinking && thinkExpanded && (
-          <View style={styles.thinkBlock}>
-            <Text style={styles.thinkText}>{message.thinkingBody}</Text>
+          <View style={[styles.thinkBlock, { backgroundColor: theme.thinkingBlock, borderLeftColor: theme.thinkingBorder }]}>
+            <Text style={[styles.thinkText, { color: theme.thinkingText }]}>{message.thinkingBody}</Text>
           </View>
         )}
 
         <View style={bubbleStyle}>
           {/* Show a subtle placeholder while only thinking tokens have arrived */}
           {message.isThinking && message.body === "" ? (
-            <Text style={[textStyle, styles.thinkingPlaceholder]}>
+            <Text style={[textStyle, { color: theme.textMuted }]}>
               {"  "}
               <Text style={styles.cursor}>▊</Text>
             </Text>
           ) : (
             <Text style={textStyle}>
-              {renderWithMentions(message.body, isOwn)}
+              {renderWithMentions(message.body, isOwn, theme)}
               {message.isStreaming && !message.isThinking ? (
                 <Text style={styles.cursor}>▊</Text>
               ) : null}
@@ -100,9 +97,9 @@ export function MessageBubble({ message, currentUser, showSenderName, onRetry }:
           )}
           <View style={styles.timestampRow}>
             {message.isPending && (
-              <ActivityIndicator size={10} color="rgba(255,255,255,0.7)" style={styles.pendingSpinner} />
+              <ActivityIndicator size={10} color={theme.ownTimestamp} style={styles.pendingSpinner} />
             )}
-            <Text style={[styles.timestamp, isOwn ? styles.ownTimestamp : styles.otherTimestamp, message.isFailed && styles.failedTimestamp]}>
+            <Text style={[styles.timestamp, { color: isOwn ? theme.ownTimestamp : theme.otherTimestamp }, message.isFailed && styles.failedTimestamp]}>
               {statusLabel}
             </Text>
             {message.isFailed && (
@@ -171,41 +168,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingBottom: 4,
   },
-  ownBubble: {
-    backgroundColor: "#3b82f6",
-    borderBottomRightRadius: 4,
-  },
-  otherBubble: {
-    backgroundColor: "#f3f4f6",
-    borderBottomLeftRadius: 4,
-  },
-  botBubble: {
-    backgroundColor: "#ede9fe",
-    borderBottomLeftRadius: 4,
-  },
   bodyText: {
     fontSize: 15,
     lineHeight: 20,
   },
-  ownText: {
-    color: "#ffffff",
-  },
-  otherText: {
-    color: "#111827",
-  },
-  thinkingPlaceholder: {
-    color: "#9ca3af",
-  },
   cursor: {
     opacity: 0.7,
-  },
-  mentionOwn: {
-    color: "#bfdbfe",
-    fontWeight: "700",
-  },
-  mentionOther: {
-    color: "#2563eb",
-    fontWeight: "700",
   },
   timestampRow: {
     flexDirection: "row",

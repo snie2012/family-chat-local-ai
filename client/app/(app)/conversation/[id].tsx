@@ -5,6 +5,7 @@ import { markAsRead } from "../../../lib/storage";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useMessages } from "../../../hooks/useMessages";
 import { useSocket } from "../../../contexts/SocketContext";
+import { useTheme } from "../../../contexts/ThemeContext";
 import { MessageList } from "../../../components/MessageList";
 import { MessageInput } from "../../../components/MessageInput";
 import { api } from "../../../lib/api";
@@ -22,6 +23,7 @@ export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { isConnected } = useSocket();
+  const theme = useTheme();
   const navigation = useNavigation();
 
   const [conversation, setConversation] = React.useState<Conversation | null>(null);
@@ -60,7 +62,7 @@ export default function ConversationScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.background }]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
     >
@@ -91,7 +93,6 @@ export default function ConversationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
   },
   reconnectingBanner: {
     backgroundColor: "#f59e0b",

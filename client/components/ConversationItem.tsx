@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Conversation, User } from "../types";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface Props {
   conversation: Conversation;
@@ -42,6 +43,7 @@ function formatTime(iso: string): string {
 }
 
 export function ConversationItem({ conversation, currentUser, onPress, isUnread = false }: Props) {
+  const theme = useTheme();
   const name = getConversationName(conversation, currentUser);
   const avatar = getAvatar(conversation, currentUser);
   const lastMsg = conversation.lastMessage;
@@ -53,7 +55,11 @@ export function ConversationItem({ conversation, currentUser, onPress, isUnread 
     : "No messages yet";
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.container, { backgroundColor: theme.surface, borderBottomColor: theme.borderLight }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={[styles.avatar, { backgroundColor: avatar.color }]}>
         {conversation.isGroup ? (
           <Text style={styles.avatarText}>👥</Text>
@@ -63,19 +69,19 @@ export function ConversationItem({ conversation, currentUser, onPress, isUnread 
       </View>
       <View style={styles.content}>
         <View style={styles.topRow}>
-          <Text style={[styles.name, isUnread && styles.nameUnread]} numberOfLines={1}>
+          <Text style={[styles.name, { color: theme.text }, isUnread && styles.nameUnread]} numberOfLines={1}>
             {name}
           </Text>
           <View style={styles.topRight}>
             {lastMsg && (
-              <Text style={[styles.time, isUnread && styles.timeUnread]}>
+              <Text style={[styles.time, { color: isUnread ? theme.primary : theme.textMuted }, isUnread && styles.timeUnread]}>
                 {formatTime(lastMsg.createdAt)}
               </Text>
             )}
-            {isUnread && <View style={styles.unreadDot} />}
+            {isUnread && <View style={[styles.unreadDot, { backgroundColor: theme.unreadDot }]} />}
           </View>
         </View>
-        <Text style={[styles.preview, isUnread && styles.previewUnread]} numberOfLines={1}>
+        <Text style={[styles.preview, { color: isUnread ? theme.text : theme.textSecondary }, isUnread && styles.previewUnread]} numberOfLines={1}>
           {preview}
         </Text>
       </View>
@@ -89,9 +95,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
     gap: 12,
   },
   avatar: {
@@ -125,7 +129,6 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#111827",
     flex: 1,
   },
   nameUnread: {
@@ -133,24 +136,19 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 12,
-    color: "#9ca3af",
   },
   timeUnread: {
-    color: "#3b82f6",
     fontWeight: "600",
   },
   preview: {
     fontSize: 13,
-    color: "#6b7280",
   },
   previewUnread: {
-    color: "#111827",
     fontWeight: "500",
   },
   unreadDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#3b82f6",
   },
 });

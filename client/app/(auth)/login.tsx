@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 
 export default function LoginScreen() {
@@ -21,6 +22,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const { login } = useAuth();
+  const theme = useTheme();
   const router = useRouter();
 
   const handleLogin = async () => {
@@ -37,12 +39,14 @@ export default function LoginScreen() {
     }
   };
 
+  const inputStyle = [styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }];
+
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.background }]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <StatusBar style="dark" />
+      <StatusBar style="auto" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -51,15 +55,15 @@ export default function LoginScreen() {
       <View style={styles.inner}>
         <View style={styles.header}>
           <Text style={styles.emoji}>💬</Text>
-          <Text style={styles.title}>Family Chat</Text>
-          <Text style={styles.subtitle}>Private chat for family & friends</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Family Chat</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Private chat for family & friends</Text>
         </View>
 
         <View style={styles.form}>
           <TextInput
-            style={styles.input}
+            style={inputStyle}
             placeholder="Username"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={theme.placeholder}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
@@ -67,9 +71,9 @@ export default function LoginScreen() {
             returnKeyType="next"
           />
           <TextInput
-            style={styles.input}
+            style={inputStyle}
             placeholder="Password"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={theme.placeholder}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -80,7 +84,7 @@ export default function LoginScreen() {
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <TouchableOpacity
-            style={[styles.loginBtn, isLoading && styles.loginBtnDisabled]}
+            style={[styles.loginBtn, { backgroundColor: theme.primary }, (isLoading || !username.trim() || !password) && { opacity: 0.6 }]}
             onPress={handleLogin}
             disabled={isLoading || !username.trim() || !password}
           >
