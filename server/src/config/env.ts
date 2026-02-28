@@ -17,6 +17,7 @@ const envSchema = z.object({
       "You are a friendly AI assistant in a private family chat. Be warm, helpful, and concise."
     ),
   CLIENT_DIST_PATH: z.string().optional(),
+  ALLOWED_ORIGIN: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 });
 

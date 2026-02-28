@@ -16,7 +16,14 @@ const registerSchema = z.object({
 });
 
 export async function authRoutes(app: FastifyInstance) {
-  app.post("/auth/login", async (request, reply) => {
+  app.post("/auth/login", {
+    config: {
+      rateLimit: {
+        max: 10,
+        timeWindow: "15 minutes",
+      },
+    },
+  }, async (request, reply) => {
     const body = loginSchema.safeParse(request.body);
     if (!body.success) {
       return reply.status(400).send({ error: "Invalid request" });

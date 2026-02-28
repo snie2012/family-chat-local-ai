@@ -19,13 +19,33 @@ export async function buildApp() {
     },
   });
 
-  // CORS
+  // Security headers
+  app.addHook("onSend", async (_request, reply) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("X-XSS-Protection", "1; mode=block");
+    reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+  });
+
+  // CORS — restrict to configured origin + localhost in dev
+  const allowedOrigins = [
+    env.ALLOWED_ORIGIN,
+    env.NODE_ENV === "development" ? "http://localhost:8081" : null,
+    env.NODE_ENV === "development" ? "http://localhost:3000" : null,
+  ].filter(Boolean) as string[];
+
   await app.register(fastifyCors, {
-    origin: true,
+    origin: (origin, cb) => {
+      if (!origin || allowedOrigins.some((o) => origin === o)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Not allowed by CORS"), false);
+      }
+    },
     credentials: true,
   });
 
-  // Rate limiting
+  // Rate limiting — global default
   await app.register(fastifyRateLimit, {
     max: 100,
     timeWindow: "1 minute",
