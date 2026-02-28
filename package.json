@@ -1,0 +1,14 @@
+{
+  "name": "family-chat",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev:server": "lsof -ti :3000 | xargs kill -9 2>/dev/null; npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "seed": "npm run seed --workspace=server"
+  }
+}
