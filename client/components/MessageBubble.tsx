@@ -104,7 +104,7 @@ export function MessageBubble({ message, currentUser, showSenderName }: Props) {
 
 const styles = StyleSheet.create({
   row: {
-    marginVertical: 2,
+    marginVertical: 3,
     paddingHorizontal: 12,
   },
   rowLeft: {
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     color: "#6366f1",
   },
   thinkHeader: {
-    paddingVertical: 3,
+    paddingVertical: 8,
     paddingHorizontal: 4,
     marginBottom: 2,
   },

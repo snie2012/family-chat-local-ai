@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
   ActivityIndicator,
   Alert,
@@ -42,6 +43,11 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar style="dark" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.inner}>
         <View style={styles.header}>
           <Text style={styles.emoji}>💬</Text>
@@ -86,6 +92,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -95,10 +102,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f9fafb",
   },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
   inner: {
-    flex: 1,
     justifyContent: "center",
     paddingHorizontal: 32,
+    paddingVertical: 48,
     maxWidth: 400,
     width: "100%",
     alignSelf: "center",

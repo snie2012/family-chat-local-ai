@@ -29,7 +29,13 @@
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png",
-      "output": "static"
+      "output": "static",
+      "themeColor": "#3b82f6",
+      "backgroundColor": "#ffffff",
+      "name": "Family Chat",
+      "shortName": "FamilyChat",
+      "description": "Private chat for family & friends",
+      "lang": "en"
     },
     "plugins": [
       "expo-router",

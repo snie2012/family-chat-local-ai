@@ -8,6 +8,7 @@ import {
   Text,
   FlatList,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useSocket } from "../contexts/SocketContext";
 import { User } from "../types";
@@ -21,6 +22,7 @@ interface Props {
 export function MessageInput({ conversationId, members = [], onSend }: Props) {
   const [text, setText] = useState("");
   const { socket } = useSocket();
+  const insets = useSafeAreaInsets();
   const typingRef = useRef(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -100,7 +102,7 @@ export function MessageInput({ conversationId, members = [], onSend }: Props) {
   };
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { paddingBottom: insets.bottom }]}>
       {/* @mention suggestions */}
       {mentionQuery !== null && filteredMembers.length > 0 && (
         <View style={styles.mentionList}>
@@ -202,7 +204,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    fontSize: 15,
+    fontSize: 16,
     color: "#111827",
     ...(Platform.OS === "web" ? { outlineStyle: "none" } as Record<string, unknown> : {}),
   },

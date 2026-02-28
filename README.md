@@ -6,9 +6,12 @@ A private real-time chat app for family and friends, with a locally-deployed AI 
 
 - Real-time messaging (direct messages and group chats)
 - AI assistant powered by Ollama (local, private — your data never leaves your machine)
-- Web app + iOS (Expo Router shared codebase)
-- Internet access via Cloudflare Tunnel (free, persistent URLs, no VPN needed)
+- Web app + iOS (Expo Router shared codebase), installable as a PWA
+- Internet access via ngrok (persistent static URL, no VPN needed)
 - Invite-only — admin creates accounts for family members
+- Unread message indicators
+- Date separators in chat (Today, Yesterday, etc.)
+- @mention autocomplete
 
 ## Tech Stack
 
@@ -18,7 +21,7 @@ A private real-time chat app for family and friends, with a locally-deployed AI 
 | Database | SQLite (via Prisma) |
 | Frontend | Expo Router (React Native Web + iOS) |
 | LLM | Ollama (local) |
-| Tunnel | Cloudflare Tunnel |
+| Tunnel | ngrok |
 
 ---
 
@@ -29,7 +32,7 @@ A private real-time chat app for family and friends, with a locally-deployed AI 
 - Node.js 20+
 - npm 9+
 - [Ollama](https://ollama.com) (installed separately)
-- A Cloudflare account (free) + domain (for internet access)
+- An [ngrok](https://ngrok.com) account (free) for internet access
 
 ---
 
@@ -57,7 +60,7 @@ JWT_SECRET="<generate with: openssl rand -hex 32>"
 ADMIN_USERNAME="yourname"
 ADMIN_PASSWORD="a-strong-password"
 ADMIN_DISPLAY_NAME="Your Name"
-OLLAMA_MODEL="llama3.2"   # or mistral, qwen2.5, deepseek-r1, etc.
+OLLAMA_MODEL="qwen3:4b-instruct"   # or llama3.2, mistral, etc.
 ```
 
 ---
@@ -66,8 +69,8 @@ OLLAMA_MODEL="llama3.2"   # or mistral, qwen2.5, deepseek-r1, etc.
 
 ```bash
 cd server
-npm run db:migrate    # creates dev.db and applies schema
-npm run seed          # creates the AI bot user + your admin account
+npx prisma migrate deploy   # creates dev.db and applies schema
+npm run seed                # creates the AI bot user + your admin account
 ```
 
 ---
@@ -78,124 +81,192 @@ npm run seed          # creates the AI bot user + your admin account
 # Install Ollama: https://ollama.com/download
 # Then pull a model (pick one based on your RAM):
 
-ollama pull llama3.2       # ~2GB RAM, fast, good quality (recommended)
-ollama pull mistral        # ~4GB RAM, excellent quality
-ollama pull qwen2.5        # ~4GB RAM, great for multilingual
-ollama pull deepseek-r1    # ~4GB RAM, strong reasoning
-ollama pull llama3.2:1b    # ~1GB RAM, fastest, lower quality
+ollama pull qwen3:4b-instruct  # ~2.5GB, recommended (supports think mode)
+ollama pull llama3.1:8b        # ~5GB, excellent quality
+ollama pull qwen2.5:14b        # ~9GB, best quality that fits on 11GB VRAM
+ollama pull llama3.2:1b        # ~1GB, fastest, lower quality
 
-# Start Ollama server (runs in background):
+# Ollama starts automatically if installed via snap/brew.
+# Otherwise start manually:
 ollama serve
 ```
 
 Update `OLLAMA_MODEL` in `server/.env` to match what you pulled.
 
----
+**GPU acceleration:** Ollama automatically detects and uses NVIDIA/AMD GPUs. No configuration needed.
 
-### 5. Start the development servers
+**Largest model for an NVIDIA GTX 1080 Ti (11GB VRAM):**
 
-**Terminal 1 — Backend:**
-```bash
-cd server
-npm run dev
-# Server running at http://localhost:3000
-```
-
-**Terminal 2 — Frontend:**
-```bash
-cd client
-npm run dev
-# Web app at http://localhost:8081
-```
-
-Open http://localhost:8081 and sign in with your admin credentials.
+| Fits comfortably | ~VRAM |
+|---|---|
+| qwen3:4b-instruct | 3GB |
+| llama3.1:8b (Q4) | 5GB |
+| qwen2.5:14b (Q4) | 9GB ← recommended max |
 
 ---
 
-### 6. Add family members
+### 5. Configure ngrok (internet access)
 
-As admin, create accounts for each family member from the command line or via the API:
+1. Sign up at [ngrok.com](https://ngrok.com) (free)
+2. Get your free static domain at [dashboard.ngrok.com/domains](https://dashboard.ngrok.com/domains)
+3. Add your authtoken:
+   ```bash
+   ngrok config add-authtoken YOUR_TOKEN
+   ```
+4. Update `client/.env`:
+   ```env
+   EXPO_PUBLIC_API_URL=https://your-domain.ngrok-free.app
+   EXPO_PUBLIC_WS_URL=https://your-domain.ngrok-free.app
+   ```
+
+---
+
+### 6. Build and start
+
+**Build the client and server:**
+```bash
+# Build server
+cd server && npm run build
+
+# Build client web app
+cd ../client && npm run build:web -- --clear
+```
+
+**Start everything:**
+```bash
+# Terminal 1 — server
+cd server && npm start
+
+# Terminal 2 — ngrok
+ngrok http --domain=your-domain.ngrok-free.app 3000
+```
+
+Open `https://your-domain.ngrok-free.app` and sign in with your admin credentials.
+
+---
+
+### 7. Install as a mobile app (PWA — free, no App Store)
+
+On iPhone or Android:
+1. Open Safari/Chrome → go to your ngrok URL
+2. Tap **Share** → **Add to Home Screen**
+3. It installs with its own icon and launches fullscreen
+
+No Apple Developer account or App Store required.
+
+---
+
+### 8. Add family members
+
+As admin, go to **Bot Settings** → **Add Member**, or use the API:
 
 ```bash
-# Using curl (replace TOKEN with your JWT from login):
-curl -X POST http://localhost:3000/auth/register \
-  -H "Authorization: Bearer TOKEN" \
+curl -X POST https://your-domain.ngrok-free.app/auth/register \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"username":"mom","displayName":"Mom","password":"their-password"}'
 ```
 
-Or use the Prisma Studio UI:
+---
+
+## Operations
+
+### Auto-start on boot (systemd)
+
+Run the setup script once to install systemd user services:
+
 ```bash
-cd server && npm run db:studio
+chmod +x scripts/setup-services.sh
+./scripts/setup-services.sh
+```
+
+Then enable auto-start without login:
+```bash
+sudo loginctl enable-linger $USER
+```
+
+**Useful commands:**
+```bash
+systemctl --user status family-chat family-chat-ngrok
+systemctl --user restart family-chat
+journalctl --user -u family-chat -f       # live server logs
+journalctl --user -u family-chat-ngrok -f # live ngrok logs
+```
+
+> **Note:** Ollama (installed via snap) auto-starts on boot automatically.
+
+---
+
+### Database backup
+
+Run manually:
+```bash
+./scripts/backup-db.sh
+```
+
+Schedule daily backups at 2am (run `crontab -e` and add):
+```
+0 2 * * * /home/snie/Projects/family-chat-local-ai/scripts/backup-db.sh
+```
+
+Backups are saved to `~/family-chat-backups/`. The last 30 are kept automatically.
+
+---
+
+### Changing the password
+
+The admin password in `.env` is only used during the initial seed. To change it after setup, update both `.env` and the database:
+
+```bash
+cd server
+node -e "
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+const db = new PrismaClient();
+bcrypt.hash('your-new-password', 12)
+  .then(hash => db.user.update({ where: { username: 'admin' }, data: { passwordHash: hash } }))
+  .then(() => { console.log('Done'); db.\$disconnect(); });
+"
 ```
 
 ---
 
-### 7. Set up Cloudflare Tunnel (internet access)
-
-This lets family members access the app from anywhere without a VPN.
+### Switching LLM models
 
 ```bash
-# Install cloudflared
-brew install cloudflared
+# Pull any model from https://ollama.com/library
+ollama pull qwen2.5:14b
+ollama pull llama3.1:8b
+ollama pull deepseek-r1:7b
 
-# Log in to Cloudflare (opens browser)
-cloudflared tunnel login
+# Update server/.env:
+OLLAMA_MODEL=qwen2.5:14b
 
-# Create a tunnel
-cloudflared tunnel create family-chat
-
-# Copy the example config
-cp cloudflared.yml.example ~/.cloudflared/config.yml
-
-# Edit ~/.cloudflared/config.yml:
-# - Replace <TUNNEL_ID> with your tunnel ID
-# - Replace <YOUR_USERNAME> with your macOS username
-# - Replace familychat.yourdomain.com with your actual domain
-
-# Create DNS records in Cloudflare dashboard (or via CLI):
-cloudflared tunnel route dns family-chat familychat.yourdomain.com
-
-# Run the tunnel
-cloudflared tunnel run family-chat
+# Restart the server
+systemctl --user restart family-chat
 ```
 
-#### Production: Serve everything on one port
+You can also change the model and system prompt from the **Bot Settings** screen in the app (admin only).
 
-Build the web client and let Fastify serve it:
+---
+
+### Rebuilding after config changes
+
+If you change `client/.env` (e.g. after changing your ngrok domain):
+
 ```bash
 cd client
-npm run build:web          # outputs to client/dist/
-
-cd ../server
-# Ensure CLIENT_DIST_PATH="../client/dist" in .env
-npm start                  # production mode
-```
-
-Then in `~/.cloudflared/config.yml`, use the single-ingress config (all traffic → port 3000).
-
-#### Update client for production
-
-In `client/.env`:
-```env
-EXPO_PUBLIC_API_URL=https://familychat.yourdomain.com
-EXPO_PUBLIC_WS_URL=https://familychat.yourdomain.com
+npm run build:web -- --clear    # clears Metro cache and rebuilds
+systemctl --user restart family-chat
 ```
 
 ---
 
-### 8. iOS (Expo Go)
+## Security notes
 
-1. Install [Expo Go](https://expo.dev/go) on your iPhone
-2. Set `EXPO_PUBLIC_API_URL` in `client/.env` to your Cloudflare URL
-3. Run `cd client && npm start`
-4. Scan the QR code with your iPhone camera
-
-For a standalone iOS app build:
-```bash
-cd client
-npx eas build --platform ios
-```
+- The ngrok URL is publicly reachable. Anyone who discovers it can attempt to log in. The server has rate limiting (100 req/min) to slow brute-force attempts.
+- Keep your ngrok authtoken private — rotate it at [dashboard.ngrok.com/authtokens](https://dashboard.ngrok.com/authtokens) if it's ever exposed.
+- JWT tokens expire after 30 days (`JWT_EXPIRY` in `.env`).
 
 ---
 
@@ -210,7 +281,7 @@ The AI bot user is `@ai` (displayed as "AI Assistant").
 - When creating a group, select "AI Assistant" along with family members
 - In the group, mention `@ai` or `@bot` to trigger a response
 
-The bot has context of the last 20 messages in the conversation.
+**Think Mode** (admin setting): enables chain-of-thought reasoning. Supported by `qwen3`, `deepseek-r1`, and similar models. Slower but more accurate.
 
 ---
 
@@ -218,6 +289,10 @@ The bot has context of the last 20 messages in the conversation.
 
 ```
 family-chat/
+├── scripts/
+│   ├── setup-services.sh  # systemd auto-start setup
+│   └── backup-db.sh       # SQLite backup
+│
 ├── server/           # Fastify backend + Socket.io + bot
 │   ├── prisma/       # Database schema and migrations
 │   └── src/
@@ -226,7 +301,7 @@ family-chat/
 │       ├── services/ # Business logic
 │       └── plugins/  # Socket.io setup
 │
-└── client/           # Expo Router app (web + iOS)
+└── client/           # Expo Router app (web + iOS PWA)
     ├── app/          # File-based routes
     ├── components/   # Reusable UI components
     ├── contexts/     # Auth + Socket contexts
@@ -236,26 +311,12 @@ family-chat/
 
 ---
 
-## Switching LLM Models
-
-```bash
-# Pull any model from https://ollama.com/library
-ollama pull qwen2.5:7b
-ollama pull deepseek-r1:7b
-ollama pull phi4
-
-# Update server/.env:
-OLLAMA_MODEL=qwen2.5:7b
-
-# Restart the server
-```
-
 ## Migrating to PostgreSQL
 
 When you're ready to switch from SQLite to PostgreSQL:
 
 1. In `server/prisma/schema.prisma`, change `provider = "sqlite"` → `"postgresql"`
 2. Set `DATABASE_URL` to your PostgreSQL connection string
-3. Run `npm run db:migrate`
+3. Run `npx prisma migrate deploy`
 
 No application code changes needed.

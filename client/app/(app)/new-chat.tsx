@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useRouter, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { User } from "../../types";
@@ -20,6 +21,7 @@ export default function NewChatScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { user: currentUser } = useAuth();
+  const insets = useSafeAreaInsets();
   const [users, setUsers] = useState<User[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isGroup, setIsGroup] = useState(false);
@@ -138,6 +140,8 @@ export default function NewChatScreen() {
       <FlatList
         data={users}
         keyExtractor={(u) => u.id}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
         ListHeaderComponent={
           <Text style={styles.sectionLabel}>
             {users.some((u) => u.isBot) ? "AI ASSISTANT" : ""}
@@ -208,7 +212,7 @@ const styles = StyleSheet.create({
     borderColor: "#e5e7eb",
     borderRadius: 10,
     paddingHorizontal: 12,
-    fontSize: 15,
+    fontSize: 16,
     ...(Platform.OS === "web" ? { outlineStyle: "none" } as Record<string, unknown> : {}),
   },
   selectedBar: {

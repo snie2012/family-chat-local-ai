@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
+import { markAsRead } from "../../../lib/storage";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useMessages } from "../../../hooks/useMessages";
 import { MessageList } from "../../../components/MessageList";
@@ -34,6 +35,15 @@ export default function ConversationScreen() {
   } = useMessages(id, user);
 
   useEffect(() => {
+    if (id) markAsRead(id);
+  }, [id]);
+
+  // Mark as read when new messages arrive
+  useEffect(() => {
+    if (id && messages.length > 0) markAsRead(id);
+  }, [messages.length]);
+
+  useEffect(() => {
     if (!id) return;
     api.get(`/conversations/${id}`).then((res) => {
       const conv = {
@@ -46,7 +56,11 @@ export default function ConversationScreen() {
   }, [id, user?.id]);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
+    >
       <MessageList
         messages={messages}
         currentUser={user}
@@ -61,7 +75,7 @@ export default function ConversationScreen() {
         members={conversation?.members.filter((m) => m.id !== user?.id) ?? []}
         onSend={sendMessage}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

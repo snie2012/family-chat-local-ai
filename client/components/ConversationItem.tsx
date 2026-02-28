@@ -6,6 +6,7 @@ interface Props {
   conversation: Conversation;
   currentUser: User | null;
   onPress: () => void;
+  isUnread?: boolean;
 }
 
 function getConversationName(conv: Conversation, currentUser: User | null): string {
@@ -40,7 +41,7 @@ function formatTime(iso: string): string {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-export function ConversationItem({ conversation, currentUser, onPress }: Props) {
+export function ConversationItem({ conversation, currentUser, onPress, isUnread = false }: Props) {
   const name = getConversationName(conversation, currentUser);
   const avatar = getAvatar(conversation, currentUser);
   const lastMsg = conversation.lastMessage;
@@ -62,14 +63,19 @@ export function ConversationItem({ conversation, currentUser, onPress }: Props) 
       </View>
       <View style={styles.content}>
         <View style={styles.topRow}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, isUnread && styles.nameUnread]} numberOfLines={1}>
             {name}
           </Text>
-          {lastMsg && (
-            <Text style={styles.time}>{formatTime(lastMsg.createdAt)}</Text>
-          )}
+          <View style={styles.topRight}>
+            {lastMsg && (
+              <Text style={[styles.time, isUnread && styles.timeUnread]}>
+                {formatTime(lastMsg.createdAt)}
+              </Text>
+            )}
+            {isUnread && <View style={styles.unreadDot} />}
+          </View>
         </View>
-        <Text style={styles.preview} numberOfLines={1}>
+        <Text style={[styles.preview, isUnread && styles.previewUnread]} numberOfLines={1}>
           {preview}
         </Text>
       </View>
@@ -110,19 +116,41 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  topRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginLeft: 8,
+  },
   name: {
     fontSize: 15,
     fontWeight: "600",
     color: "#111827",
     flex: 1,
   },
+  nameUnread: {
+    fontWeight: "700",
+  },
   time: {
     fontSize: 12,
     color: "#9ca3af",
-    marginLeft: 8,
+  },
+  timeUnread: {
+    color: "#3b82f6",
+    fontWeight: "600",
   },
   preview: {
     fontSize: 13,
     color: "#6b7280",
+  },
+  previewUnread: {
+    color: "#111827",
+    fontWeight: "500",
+  },
+  unreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#3b82f6",
   },
 });

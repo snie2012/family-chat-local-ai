@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -7,19 +7,34 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
 import { useConversations } from "../../hooks/useConversations";
 import { ConversationItem } from "../../components/ConversationItem";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
+import { getLastSeen } from "../../lib/storage";
 
 export default function ConversationsScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { conversations, isLoading, refresh } = useConversations();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const [lastSeenMap, setLastSeenMap] = useState<Record<string, string>>({});
+
+  useFocusEffect(
+    useCallback(() => {
+      const map: Record<string, string> = {};
+      for (const conv of conversations) {
+        const val = getLastSeen(conv.id);
+        if (val) map[conv.id] = val;
+      }
+      setLastSeenMap(map);
+    }, [conversations])
+  );
 
   useEffect(() => {
     navigation.setOptions({
@@ -83,6 +98,11 @@ export default function ConversationsScreen() {
             <ConversationItem
               conversation={item}
               currentUser={user}
+              isUnread={
+                !!item.lastMessage &&
+                item.lastMessage.sender.id !== user?.id &&
+                item.lastMessage.createdAt > (lastSeenMap[item.id] ?? "")
+              }
               onPress={() =>
                 router.push({
                   pathname: "/(app)/conversation/[id]",
@@ -94,6 +114,8 @@ export default function ConversationsScreen() {
           onRefresh={refresh}
           refreshing={isLoading}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: insets.bottom }}
         />
       )}
     </View>

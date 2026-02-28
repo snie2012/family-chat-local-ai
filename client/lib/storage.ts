@@ -23,3 +23,21 @@ export async function deleteToken(): Promise<void> {
     await SecureStore.deleteItemAsync("auth_token");
   }
 }
+
+const _lastSeenMap = new Map<string, string>();
+
+export function getLastSeen(conversationId: string): string | null {
+  if (Platform.OS === "web") {
+    return localStorage.getItem(`last_seen_${conversationId}`);
+  }
+  return _lastSeenMap.get(conversationId) ?? null;
+}
+
+export function markAsRead(conversationId: string): void {
+  const now = new Date().toISOString();
+  if (Platform.OS === "web") {
+    localStorage.setItem(`last_seen_${conversationId}`, now);
+  } else {
+    _lastSeenMap.set(conversationId, now);
+  }
+}

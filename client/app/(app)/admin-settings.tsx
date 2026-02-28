@@ -12,6 +12,7 @@ import {
   Alert,
 } from "react-native";
 import { useNavigation } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../../lib/api";
 import { User } from "../../types";
 
@@ -23,6 +24,7 @@ interface BotSettings {
 
 export default function AdminSettingsScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [settings, setSettings] = useState<BotSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -109,7 +111,7 @@ export default function AdminSettingsScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
       {/* Think Mode */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>REASONING</Text>
@@ -267,7 +269,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    fontSize: 14,
+    fontSize: 16,
     color: "#111827",
     ...(Platform.OS === "web" ? { outlineStyle: "none" } as Record<string, unknown> : {}),
   },
