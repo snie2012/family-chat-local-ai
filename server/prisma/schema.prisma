@@ -56,3 +56,9 @@ model Message {
 
   @@index([conversationId, createdAt])
 }
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

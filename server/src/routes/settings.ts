@@ -1,14 +1,40 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { env } from "../config/env";
+import { prisma } from "../db/prisma";
 
-// In-memory settings — survives for the lifetime of the server process.
-// Flip thinkMode to true only for models that support it (qwen3, deepseek-r1, etc.)
+// In-memory settings — loaded from DB on startup, written back on change.
 export const botSettings = {
   thinkMode: false,
   model: env.OLLAMA_MODEL,
   systemPrompt: env.BOT_SYSTEM_PROMPT,
 };
+
+export async function initBotSettings() {
+  const rows = await prisma.setting.findMany({
+    where: { key: { in: ["thinkMode", "model", "systemPrompt"] } },
+  });
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  if (map.thinkMode !== undefined) botSettings.thinkMode = map.thinkMode === "true";
+  if (map.model !== undefined) botSettings.model = map.model;
+  if (map.systemPrompt !== undefined) botSettings.systemPrompt = map.systemPrompt;
+  console.log("[Settings] Bot settings loaded from DB:", botSettings);
+}
+
+async function persistBotSettings() {
+  const entries = [
+    { key: "thinkMode", value: String(botSettings.thinkMode) },
+    { key: "model", value: botSettings.model },
+    { key: "systemPrompt", value: botSettings.systemPrompt },
+  ];
+  for (const entry of entries) {
+    await prisma.setting.upsert({
+      where: { key: entry.key },
+      create: entry,
+      update: { value: entry.value },
+    });
+  }
+}
 
 const patchSchema = z.object({
   thinkMode: z.boolean().optional(),
@@ -41,7 +67,8 @@ export async function settingsRoutes(app: FastifyInstance) {
       if (body.data.model !== undefined) botSettings.model = body.data.model;
       if (body.data.systemPrompt !== undefined) botSettings.systemPrompt = body.data.systemPrompt;
 
-      console.log(`[Settings] Bot settings updated:`, botSettings);
+      await persistBotSettings();
+      console.log(`[Settings] Bot settings updated and persisted:`, botSettings);
       return reply.send({ ...botSettings });
     }
   );

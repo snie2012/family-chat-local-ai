@@ -18,7 +18,8 @@ export function useMessages(conversationId: string, currentUser: User | null): U
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  // Maps userId → displayName so we can remove by userId when typing stops
+  const [typingUsersMap, setTypingUsersMap] = useState<Record<string, string>>({});
   const cursorRef = useRef<string | null>(null);
   const { socket } = useSocket();
 
@@ -58,6 +59,7 @@ export function useMessages(conversationId: string, currentUser: User | null): U
 
   useEffect(() => {
     setMessages([]);
+    setTypingUsersMap({});
     cursorRef.current = null;
     fetchMessages();
   }, [conversationId, fetchMessages]);
@@ -161,8 +163,8 @@ export function useMessages(conversationId: string, currentUser: User | null): U
     }) => {
       if (convId !== conversationId) return;
       if (userId === currentUser?.id) return;
-      setTypingUsers((prev) =>
-        prev.includes(displayName) ? prev : [...prev, displayName]
+      setTypingUsersMap((prev) =>
+        prev[userId] === displayName ? prev : { ...prev, [userId]: displayName }
       );
     };
 
@@ -174,8 +176,12 @@ export function useMessages(conversationId: string, currentUser: User | null): U
       conversationId: string;
     }) => {
       if (convId !== conversationId) return;
-      // We stored displayName, so find by userId is indirect; just refetch
-      setTypingUsers([]);
+      setTypingUsersMap((prev) => {
+        if (!(userId in prev)) return prev;
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
     };
 
     socket.on("new_message", handleNewMessage);
@@ -206,5 +212,6 @@ export function useMessages(conversationId: string, currentUser: User | null): U
     [socket, conversationId]
   );
 
+  const typingUsers = Object.values(typingUsersMap);
   return { messages, isLoading, isFetchingMore, hasMore, sendMessage, loadMore, typingUsers };
 }

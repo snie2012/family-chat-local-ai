@@ -2,8 +2,10 @@ import "dotenv/config";
 import { buildApp } from "./app";
 import { createSocketServer } from "./plugins/socket";
 import { env } from "./config/env";
+import { initBotSettings } from "./routes/settings";
 
 async function main() {
+  await initBotSettings();
   const app = await buildApp();
 
   // Create Socket.io server attached to Fastify's underlying HTTP server
