@@ -71,5 +71,15 @@ export async function buildApp() {
   // Health check
   app.get("/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
 
+  // SPA fallback: serve index.html for unknown non-API routes
+  const apiPrefixes = ["/auth", "/users", "/conversations", "/settings", "/health", "/socket.io"];
+  app.setNotFoundHandler(async (request, reply) => {
+    const isApiRoute = apiPrefixes.some((p) => request.url.startsWith(p));
+    if (!isApiRoute && fs.existsSync(clientDistPath)) {
+      return reply.sendFile("index.html");
+    }
+    reply.status(404).send({ error: "Not found" });
+  });
+
   return app;
 }
