@@ -3,9 +3,11 @@ import { buildApp } from "./app";
 import { createSocketServer } from "./plugins/socket";
 import { env } from "./config/env";
 import { initBotSettings } from "./routes/settings";
+import { initPushService } from "./services/push.service";
 
 async function main() {
   await initBotSettings();
+  await initPushService();
   const app = await buildApp();
 
   // Create Socket.io server attached to Fastify's underlying HTTP server

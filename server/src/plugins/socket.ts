@@ -3,6 +3,7 @@ import { Server, Socket } from "socket.io";
 import { createMessage } from "../services/message.service";
 import { isUserInConversation } from "../services/conversation.service";
 import { shouldBotRespond, handleBotResponse } from "../bot/bot";
+import { sendPushToUsers } from "../services/push.service";
 import { prisma } from "../db/prisma";
 import { FastifyInstance } from "fastify";
 
@@ -115,6 +116,22 @@ export function createSocketServer(
 
           // Acknowledge success to sender
           ack?.({ ok: true });
+
+          // Push notifications to members who may be offline
+          const members = await prisma.conversationMember.findMany({
+            where: { conversationId },
+            select: { userId: true },
+          });
+          const recipientIds = members
+            .map((m) => m.userId)
+            .filter((id) => id !== userId);
+          if (recipientIds.length > 0) {
+            sendPushToUsers(recipientIds, {
+              title: displayName,
+              body: message.body.slice(0, 100),
+              url: `/conversation/${conversationId}`,
+            }).catch(() => { /* non-critical */ });
+          }
 
           // Check if bot should respond (non-blocking)
           const botShouldReply = await shouldBotRespond(conversationId, body);

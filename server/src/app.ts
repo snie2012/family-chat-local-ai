@@ -11,6 +11,7 @@ import { authRoutes } from "./routes/auth";
 import { userRoutes } from "./routes/users";
 import { conversationRoutes } from "./routes/conversations";
 import { settingsRoutes } from "./routes/settings";
+import { pushRoutes } from "./routes/push";
 
 export async function buildApp() {
   const app = Fastify({
@@ -87,12 +88,13 @@ export async function buildApp() {
   await app.register(userRoutes);
   await app.register(conversationRoutes);
   await app.register(settingsRoutes);
+  await app.register(pushRoutes);
 
   // Health check
   app.get("/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
 
   // SPA fallback: serve index.html for unknown non-API routes
-  const apiPrefixes = ["/auth", "/users", "/conversations", "/settings", "/health", "/socket.io"];
+  const apiPrefixes = ["/auth", "/users", "/conversations", "/settings", "/push", "/health", "/socket.io"];
   app.setNotFoundHandler(async (request, reply) => {
     const isApiRoute = apiPrefixes.some((p) => request.url.startsWith(p));
     if (!isApiRoute && fs.existsSync(clientDistPath)) {

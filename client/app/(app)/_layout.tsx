@@ -2,6 +2,7 @@ import { Stack, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { SocketProvider } from "../../contexts/SocketContext";
+import { registerPushNotifications } from "../../lib/push";
 import { ActivityIndicator, View } from "react-native";
 
 export default function AppLayout() {
@@ -13,6 +14,10 @@ export default function AppLayout() {
       router.replace("/(auth)/login");
     }
   }, [user, isLoading]);
+
+  useEffect(() => {
+    if (user) registerPushNotifications();
+  }, [user?.id]);
 
   if (isLoading) {
     return (
