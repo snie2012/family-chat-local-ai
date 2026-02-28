@@ -7,6 +7,20 @@ import { sendPushToUsers } from "../services/push.service";
 import { prisma } from "../db/prisma";
 import { FastifyInstance } from "fastify";
 
+// Sliding-window rate limiter: max 10 messages per 5 seconds per user
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 5000;
+const messageTimes = new Map<string, number[]>();
+
+function isRateLimited(userId: string): boolean {
+  const now = Date.now();
+  const times = (messageTimes.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  if (times.length >= RATE_LIMIT_MAX) return true;
+  times.push(now);
+  messageTimes.set(userId, times);
+  return false;
+}
+
 interface AuthenticatedSocket extends Socket {
   data: {
     userId: string;
@@ -93,6 +107,11 @@ export function createSocketServer(
       ) => {
         if (!body?.trim()) {
           ack?.({ ok: false, error: "Empty message" });
+          return;
+        }
+
+        if (isRateLimited(userId)) {
+          ack?.({ ok: false, error: "Rate limit exceeded. Slow down." });
           return;
         }
 
