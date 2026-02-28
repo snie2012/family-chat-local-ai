@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Message, User } from "../types";
 
 function renderWithMentions(body: string, isOwn: boolean) {
@@ -21,6 +21,7 @@ interface Props {
   message: Message;
   currentUser: User | null;
   showSenderName: boolean;
+  onRetry?: (messageId: string) => void;
 }
 
 function formatTime(iso: string): string {
@@ -28,7 +29,7 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-export function MessageBubble({ message, currentUser, showSenderName }: Props) {
+export function MessageBubble({ message, currentUser, showSenderName, onRetry }: Props) {
   const isOwn = message.senderId === currentUser?.id;
   const isBot = message.sender.isBot;
   const [thinkExpanded, setThinkExpanded] = useState(false);
@@ -45,7 +46,11 @@ export function MessageBubble({ message, currentUser, showSenderName }: Props) {
     isOwn ? styles.ownText : styles.otherText,
   ];
 
-  const statusLabel = message.isThinking
+  const statusLabel = message.isFailed
+    ? "Failed"
+    : message.isPending
+    ? "Sending..."
+    : message.isThinking
     ? "thinking..."
     : message.isStreaming
     ? "typing..."
@@ -93,9 +98,19 @@ export function MessageBubble({ message, currentUser, showSenderName }: Props) {
               ) : null}
             </Text>
           )}
-          <Text style={[styles.timestamp, isOwn ? styles.ownTimestamp : styles.otherTimestamp]}>
-            {statusLabel}
-          </Text>
+          <View style={styles.timestampRow}>
+            {message.isPending && (
+              <ActivityIndicator size={10} color="rgba(255,255,255,0.7)" style={styles.pendingSpinner} />
+            )}
+            <Text style={[styles.timestamp, isOwn ? styles.ownTimestamp : styles.otherTimestamp, message.isFailed && styles.failedTimestamp]}>
+              {statusLabel}
+            </Text>
+            {message.isFailed && (
+              <TouchableOpacity onPress={() => onRetry?.(message.id)} style={styles.retryBtn}>
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     </View>
@@ -192,15 +207,38 @@ const styles = StyleSheet.create({
     color: "#2563eb",
     fontWeight: "700",
   },
+  timestampRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginTop: 2,
+    gap: 4,
+  },
+  pendingSpinner: {
+    marginRight: 2,
+  },
   timestamp: {
     fontSize: 10,
-    marginTop: 2,
-    alignSelf: "flex-end",
   },
   ownTimestamp: {
     color: "rgba(255,255,255,0.7)",
   },
   otherTimestamp: {
     color: "#9ca3af",
+  },
+  failedTimestamp: {
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "600",
+  },
+  retryBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderRadius: 8,
+  },
+  retryText: {
+    fontSize: 10,
+    color: "#fff",
+    fontWeight: "600",
   },
 });

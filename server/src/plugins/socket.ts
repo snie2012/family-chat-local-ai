@@ -86,38 +86,46 @@ export function createSocketServer(
     // Send a message
     socket.on(
       "send_message",
-      async ({
-        conversationId,
-        body,
-      }: {
-        conversationId: string;
-        body: string;
-      }) => {
-        if (!body?.trim()) return;
+      async (
+        { conversationId, body }: { conversationId: string; body: string },
+        ack?: (result: { ok: boolean; error?: string }) => void
+      ) => {
+        if (!body?.trim()) {
+          ack?.({ ok: false, error: "Empty message" });
+          return;
+        }
 
         const isMember = await isUserInConversation(userId, conversationId);
         if (!isMember) {
           socket.emit("error", { code: "NOT_MEMBER", message: "Not a member of this conversation" });
+          ack?.({ ok: false, error: "Not a member" });
           return;
         }
 
-        // Save message to DB
-        const message = await createMessage({
-          conversationId,
-          senderId: userId,
-          body: body.trim(),
-        });
-
-        // Broadcast to all members in the room
-        io.to(conversationId).emit("new_message", { message });
-
-        // Check if bot should respond (non-blocking)
-        const botShouldReply = await shouldBotRespond(conversationId, body);
-        if (botShouldReply) {
-          // Fire-and-forget bot response
-          handleBotResponse(io, conversationId).catch((err) => {
-            console.error("Bot handler error:", err);
+        try {
+          // Save message to DB
+          const message = await createMessage({
+            conversationId,
+            senderId: userId,
+            body: body.trim(),
           });
+
+          // Broadcast to all members in the room
+          io.to(conversationId).emit("new_message", { message });
+
+          // Acknowledge success to sender
+          ack?.({ ok: true });
+
+          // Check if bot should respond (non-blocking)
+          const botShouldReply = await shouldBotRespond(conversationId, body);
+          if (botShouldReply) {
+            handleBotResponse(io, conversationId).catch((err) => {
+              console.error("Bot handler error:", err);
+            });
+          }
+        } catch (err) {
+          console.error("send_message error:", err);
+          ack?.({ ok: false, error: "Server error" });
         }
       }
     );

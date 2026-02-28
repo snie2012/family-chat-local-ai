@@ -1,9 +1,10 @@
 import React, { useEffect } from "react";
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { markAsRead } from "../../../lib/storage";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useMessages } from "../../../hooks/useMessages";
+import { useSocket } from "../../../contexts/SocketContext";
 import { MessageList } from "../../../components/MessageList";
 import { MessageInput } from "../../../components/MessageInput";
 import { api } from "../../../lib/api";
@@ -20,6 +21,7 @@ function getConversationTitle(conv: Conversation | null, currentUserId: string |
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const { isConnected } = useSocket();
   const navigation = useNavigation();
 
   const [conversation, setConversation] = React.useState<Conversation | null>(null);
@@ -30,6 +32,7 @@ export default function ConversationScreen() {
     isFetchingMore,
     hasMore,
     sendMessage,
+    retryMessage,
     loadMore,
     typingUsers,
   } = useMessages(id, user);
@@ -61,6 +64,11 @@ export default function ConversationScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
     >
+      {!isConnected && (
+        <View style={styles.reconnectingBanner}>
+          <Text style={styles.reconnectingText}>Reconnecting...</Text>
+        </View>
+      )}
       <MessageList
         messages={messages}
         currentUser={user}
@@ -69,6 +77,7 @@ export default function ConversationScreen() {
         hasMore={hasMore}
         onLoadMore={loadMore}
         typingUsers={typingUsers}
+        onRetry={retryMessage}
       />
       <MessageInput
         conversationId={id}
@@ -83,5 +92,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f9fafb",
+  },
+  reconnectingBanner: {
+    backgroundColor: "#f59e0b",
+    paddingVertical: 6,
+    alignItems: "center",
+  },
+  reconnectingText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
   },
 });

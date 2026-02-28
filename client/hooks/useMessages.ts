@@ -9,6 +9,7 @@ interface UseMessagesResult {
   isFetchingMore: boolean;
   hasMore: boolean;
   sendMessage: (body: string) => void;
+  retryMessage: (messageId: string) => void;
   loadMore: () => void;
   typingUsers: string[];
 }
@@ -21,6 +22,8 @@ export function useMessages(conversationId: string, currentUser: User | null): U
   // Maps userId → displayName so we can remove by userId when typing stops
   const [typingUsersMap, setTypingUsersMap] = useState<Record<string, string>>({});
   const cursorRef = useRef<string | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+  const pendingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const { socket } = useSocket();
 
   const fetchMessages = useCallback(async () => {
@@ -56,6 +59,17 @@ export function useMessages(conversationId: string, currentUser: User | null): U
       setIsFetchingMore(false);
     }
   }, [conversationId, isFetchingMore]);
+
+  // Keep a ref in sync with state so callbacks can access latest messages
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  // Clear pending timeouts on unmount
+  useEffect(() => {
+    return () => {
+      pendingTimeoutsRef.current.forEach((tid) => clearTimeout(tid));
+      pendingTimeoutsRef.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     setMessages([]);
@@ -206,12 +220,59 @@ export function useMessages(conversationId: string, currentUser: User | null): U
 
   const sendMessage = useCallback(
     (body: string) => {
-      if (!socket || !body.trim()) return;
-      socket.emit("send_message", { conversationId, body: body.trim() });
+      if (!socket || !body.trim() || !currentUser) return;
+      const trimmed = body.trim();
+      const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+      // Optimistically add the message immediately
+      const optimistic: Message = {
+        id: tempId,
+        conversationId,
+        senderId: currentUser.id,
+        body: trimmed,
+        isStreaming: false,
+        isPending: true,
+        createdAt: new Date().toISOString(),
+        sender: currentUser,
+      };
+      setMessages((prev) => [...prev, optimistic]);
+
+      // Timeout: mark as failed if no ack within 5 seconds
+      const timeoutId = setTimeout(() => {
+        pendingTimeoutsRef.current.delete(tempId);
+        setMessages((prev) =>
+          prev.map((m) => m.id === tempId ? { ...m, isPending: false, isFailed: true } : m)
+        );
+      }, 5000);
+      pendingTimeoutsRef.current.set(tempId, timeoutId);
+
+      socket.emit("send_message", { conversationId, body: trimmed }, (res: { ok: boolean }) => {
+        const tid = pendingTimeoutsRef.current.get(tempId);
+        if (tid) { clearTimeout(tid); pendingTimeoutsRef.current.delete(tempId); }
+
+        if (res?.ok) {
+          // Real message arrives via new_message; remove the optimistic copy
+          setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        } else {
+          setMessages((prev) =>
+            prev.map((m) => m.id === tempId ? { ...m, isPending: false, isFailed: true } : m)
+          );
+        }
+      });
     },
-    [socket, conversationId]
+    [socket, conversationId, currentUser]
+  );
+
+  const retryMessage = useCallback(
+    (messageId: string) => {
+      const msg = messagesRef.current.find((m) => m.id === messageId);
+      if (!msg) return;
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      sendMessage(msg.body);
+    },
+    [sendMessage]
   );
 
   const typingUsers = Object.values(typingUsersMap);
-  return { messages, isLoading, isFetchingMore, hasMore, sendMessage, loadMore, typingUsers };
+  return { messages, isLoading, isFetchingMore, hasMore, sendMessage, retryMessage, loadMore, typingUsers };
 }

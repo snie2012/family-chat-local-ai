@@ -16,6 +16,8 @@ export interface Message {
   isStreaming: boolean;
   thinkingBody?: string;   // accumulated thinking tokens (client-only, not persisted)
   isThinking?: boolean;    // true while thinking tokens are still arriving
+  isPending?: boolean;     // optimistic message not yet confirmed by server
+  isFailed?: boolean;      // message failed to send
   createdAt: string;
   sender: User;
 }

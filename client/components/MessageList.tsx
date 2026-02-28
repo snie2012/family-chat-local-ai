@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { View, Text, ActivityIndicator, StyleSheet, FlatList, Platform } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { View, Text, ActivityIndicator, StyleSheet, FlatList, Platform, TouchableOpacity } from "react-native";
 import { Message, User } from "../types";
 import { MessageBubble } from "./MessageBubble";
 
@@ -41,6 +41,7 @@ interface Props {
   hasMore: boolean;
   onLoadMore: () => void;
   typingUsers: string[];
+  onRetry: (messageId: string) => void;
 }
 
 export function MessageList({
@@ -51,8 +52,10 @@ export function MessageList({
   hasMore,
   onLoadMore,
   typingUsers,
+  onRetry,
 }: Props) {
   const flatListRef = useRef<FlatList>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const listItems = buildListItems(messages);
 
   // Auto-scroll to bottom on new messages
@@ -60,9 +63,16 @@ export function MessageList({
     if (messages.length > 0) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
+        setShowScrollButton(false);
       }, 50);
     }
   }, [messages.length, messages[messages.length - 1]?.body]);
+
+  const handleScroll = useCallback(({ nativeEvent }: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
+    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    setShowScrollButton(distanceFromBottom > 100);
+  }, []);
 
   if (isLoading) {
     return (
@@ -98,42 +108,62 @@ export function MessageList({
         message={item}
         currentUser={currentUser}
         showSenderName={showSenderName}
+        onRetry={onRetry}
       />
     );
   };
 
   return (
-    <FlatList
-      ref={flatListRef}
-      data={listItems}
-      keyExtractor={(item) => (isSeparator(item) ? item.id : item.id)}
-      renderItem={renderItem}
-      onEndReached={hasMore ? onLoadMore : undefined}
-      onEndReachedThreshold={0.1}
-      keyboardDismissMode="interactive"
-      keyboardShouldPersistTaps="handled"
-      automaticallyAdjustKeyboardInsets={Platform.OS !== "web"}
-      ListHeaderComponent={
-        isFetchingMore ? (
-          <ActivityIndicator size="small" color="#3b82f6" style={styles.loadingMore} />
-        ) : null
-      }
-      ListFooterComponent={
-        typingUsers.length > 0 ? (
-          <View style={styles.typingRow}>
-            <Text style={styles.typingText}>
-              {typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing...
-            </Text>
-          </View>
-        ) : null
-      }
-      contentContainerStyle={styles.listContent}
-      showsVerticalScrollIndicator={false}
-    />
+    <View style={styles.container}>
+      <FlatList
+        ref={flatListRef}
+        data={listItems}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        onEndReached={hasMore ? onLoadMore : undefined}
+        onEndReachedThreshold={0.1}
+        onScroll={handleScroll}
+        scrollEventThrottle={100}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets={Platform.OS !== "web"}
+        ListHeaderComponent={
+          isFetchingMore ? (
+            <ActivityIndicator size="small" color="#3b82f6" style={styles.loadingMore} />
+          ) : null
+        }
+        ListFooterComponent={
+          typingUsers.length > 0 ? (
+            <View style={styles.typingRow}>
+              <Text style={styles.typingText}>
+                {typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing...
+              </Text>
+            </View>
+          ) : null
+        }
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      />
+      {showScrollButton && (
+        <TouchableOpacity
+          style={styles.scrollBottomBtn}
+          onPress={() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+            setShowScrollButton(false);
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.scrollBottomIcon}>↓</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   centered: {
     flex: 1,
     alignItems: "center",
@@ -175,5 +205,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#9ca3af",
     fontWeight: "500",
+  },
+  scrollBottomBtn: {
+    position: "absolute",
+    bottom: 12,
+    alignSelf: "center",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#3b82f6",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  scrollBottomIcon: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    lineHeight: 22,
   },
 });
