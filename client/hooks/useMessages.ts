@@ -261,13 +261,16 @@ export function useMessages(conversationId: string, currentUser: User | null): U
       }, 5000);
       pendingTimeoutsRef.current.set(tempId, timeoutId);
 
-      socket.emit("send_message", { conversationId, body: trimmed }, (res: { ok: boolean }) => {
+      socket.emit("send_message", { conversationId, body: trimmed }, (res: { ok: boolean; message?: Message }) => {
         const tid = pendingTimeoutsRef.current.get(tempId);
         if (tid) { clearTimeout(tid); pendingTimeoutsRef.current.delete(tempId); }
 
-        if (res?.ok) {
-          // Real message arrives via new_message; remove the optimistic copy
-          setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        if (res?.ok && res.message) {
+          // Replace the optimistic message in-place with the confirmed server message.
+          // The server sends new_message only to *other* members, so there is no duplicate.
+          setMessages((prev) =>
+            prev.map((m) => m.id === tempId ? { ...res.message!, isPending: false } : m)
+          );
         } else {
           setMessages((prev) =>
             prev.map((m) => m.id === tempId ? { ...m, isPending: false, isFailed: true } : m)

@@ -103,7 +103,7 @@ export function createSocketServer(
       "send_message",
       async (
         { conversationId, body }: { conversationId: string; body: string },
-        ack?: (result: { ok: boolean; error?: string }) => void
+        ack?: (result: { ok: boolean; message?: Record<string, unknown>; error?: string }) => void
       ) => {
         if (!body?.trim()) {
           ack?.({ ok: false, error: "Empty message" });
@@ -130,11 +130,12 @@ export function createSocketServer(
             body: body.trim(),
           });
 
-          // Broadcast to all members in the room
-          io.to(conversationId).emit("new_message", { message });
+          // Broadcast to OTHER members in the room (exclude sender to avoid duplicate)
+          socket.to(conversationId).emit("new_message", { message });
 
-          // Acknowledge success to sender
-          ack?.({ ok: true });
+          // Acknowledge success to sender with the saved message so the client can
+          // replace the optimistic message in-place (no duplicate, no race condition)
+          ack?.({ ok: true, message: { ...message, reactions: [] } as Record<string, unknown> });
 
           // Push notifications to members who may be offline
           const members = await prisma.conversationMember.findMany({
