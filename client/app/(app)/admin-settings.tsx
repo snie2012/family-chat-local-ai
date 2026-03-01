@@ -51,16 +51,16 @@ export default function AdminSettingsScreen() {
       headerRight: () => (
         <TouchableOpacity onPress={handleSave} disabled={isSaving} style={{ marginRight: 8 }}>
           {isSaving ? (
-            <ActivityIndicator size="small" color="#3b82f6" />
+            <ActivityIndicator size="small" color={theme.primary} />
           ) : (
-            <Text style={{ color: "#3b82f6", fontSize: 16, fontWeight: "600" }}>
+            <Text style={{ color: theme.primary, fontSize: 16, fontWeight: "600" }}>
               {saved ? "Saved ✓" : "Save"}
             </Text>
           )}
         </TouchableOpacity>
       ),
     });
-  }, [settings, isSaving, saved]);
+  }, [navigation, settings, isSaving, saved, theme.primary]);
 
   useEffect(() => {
     api.get("/settings/bot").then((res) => {

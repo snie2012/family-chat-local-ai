@@ -135,7 +135,7 @@ export function MessageList({
         automaticallyAdjustKeyboardInsets={Platform.OS !== "web"}
         ListHeaderComponent={
           isFetchingMore ? (
-            <ActivityIndicator size="small" color="#3b82f6" style={styles.loadingMore} />
+            <ActivityIndicator size="small" color={theme.primary} style={styles.loadingMore} />
           ) : null
         }
         ListFooterComponent={
@@ -152,14 +152,14 @@ export function MessageList({
       />
       {showScrollButton && (
         <TouchableOpacity
-          style={styles.scrollBottomBtn}
+          style={[styles.scrollBottomBtn, { backgroundColor: theme.primary }]}
           onPress={() => {
             flatListRef.current?.scrollToEnd({ animated: true });
             setShowScrollButton(false);
           }}
           activeOpacity={0.8}
         >
-          <Text style={styles.scrollBottomIcon}>↓</Text>
+          <Text style={[styles.scrollBottomIcon, { color: theme.ownBubbleText }]}>↓</Text>
         </TouchableOpacity>
       )}
     </View>

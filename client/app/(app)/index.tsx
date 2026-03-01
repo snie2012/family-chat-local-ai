@@ -47,17 +47,17 @@ export default function ConversationsScreen() {
               onPress={() => router.push("/(app)/admin-settings")}
               style={styles.headerBtn}
             >
-              <Ionicons name="settings-outline" size={24} color="#6b7280" />
+              <Ionicons name="settings-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
             onPress={() => router.push("/(app)/new-chat")}
             style={styles.headerBtn}
           >
-            <Ionicons name="create-outline" size={24} color="#3b82f6" />
+            <Ionicons name="create-outline" size={24} color={theme.primary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={logout} style={styles.headerBtn}>
-            <Ionicons name="log-out-outline" size={24} color="#6b7280" />
+            <Ionicons name="log-out-outline" size={24} color={theme.textSecondary} />
           </TouchableOpacity>
         </View>
       ),
@@ -72,7 +72,7 @@ export default function ConversationsScreen() {
         </View>
       ),
     });
-  }, [user, logout]);
+  }, [navigation, router, user, logout, theme.primary, theme.text, theme.textSecondary]);
 
   if (isLoading) {
     return (

@@ -50,8 +50,8 @@ export default function NewChatScreen() {
           <Text
             style={{
               color: selected.size === 0 || isCreating || (isGroup && !groupName.trim())
-                ? "#93c5fd"
-                : "#3b82f6",
+                ? theme.textMuted
+                : theme.primary,
               fontSize: 16,
               fontWeight: "600",
             }}
@@ -61,7 +61,7 @@ export default function NewChatScreen() {
         </TouchableOpacity>
       ),
     });
-  }, [selected, isGroup, groupName, isCreating]);
+  }, [navigation, selected, isGroup, groupName, isCreating, theme.primary, theme.textMuted]);
 
   const toggleUser = (userId: string) => {
     setSelected((prev) => {
