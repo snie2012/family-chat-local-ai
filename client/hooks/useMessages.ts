@@ -27,6 +27,19 @@ export function useMessages(conversationId: string, currentUser: User | null): U
   const pendingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const { socket } = useSocket();
 
+  const sortMessagesByCreatedAt = useCallback((items: Message[]) => {
+    return [...items].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, []);
+
+  const mergeMessagesById = useCallback((base: Message[], incoming: Message[]) => {
+    const map = new Map<string, Message>();
+    for (const msg of base) map.set(msg.id, msg);
+    for (const msg of incoming) map.set(msg.id, msg);
+    return sortMessagesByCreatedAt([...map.values()]);
+  }, [sortMessagesByCreatedAt]);
+
   const fetchMessages = useCallback(async () => {
     if (!conversationId) return;
     setIsLoading(true);
@@ -34,7 +47,11 @@ export function useMessages(conversationId: string, currentUser: User | null): U
       const res = await api.get("/messages", {
         params: { conversationId, limit: 50 },
       });
-      setMessages(res.data.messages);
+      setMessages((prev) => {
+        // Keep optimistic/failed local items while replacing server-backed history.
+        const localPendingOrFailed = prev.filter((m) => m.isPending || m.isFailed);
+        return mergeMessagesById(res.data.messages, localPendingOrFailed);
+      });
       cursorRef.current = res.data.nextCursor;
       setHasMore(!!res.data.nextCursor);
     } catch (err) {
@@ -42,7 +59,7 @@ export function useMessages(conversationId: string, currentUser: User | null): U
     } finally {
       setIsLoading(false);
     }
-  }, [conversationId]);
+  }, [conversationId, mergeMessagesById]);
 
   const loadMore = useCallback(async () => {
     if (!cursorRef.current || isFetchingMore) return;
@@ -51,7 +68,7 @@ export function useMessages(conversationId: string, currentUser: User | null): U
       const res = await api.get("/messages", {
         params: { conversationId, cursor: cursorRef.current, limit: 50 },
       });
-      setMessages((prev) => [...res.data.messages, ...prev]);
+      setMessages((prev) => mergeMessagesById(prev, res.data.messages));
       cursorRef.current = res.data.nextCursor;
       setHasMore(!!res.data.nextCursor);
     } catch (err) {
@@ -59,7 +76,7 @@ export function useMessages(conversationId: string, currentUser: User | null): U
     } finally {
       setIsFetchingMore(false);
     }
-  }, [conversationId, isFetchingMore]);
+  }, [conversationId, isFetchingMore, mergeMessagesById]);
 
   // Keep a ref in sync with state so callbacks can access latest messages
   useEffect(() => { messagesRef.current = messages; }, [messages]);
@@ -268,9 +285,20 @@ export function useMessages(conversationId: string, currentUser: User | null): U
         if (res?.ok && res.message) {
           // Replace the optimistic message in-place with the confirmed server message.
           // The server sends new_message only to *other* members, so there is no duplicate.
-          setMessages((prev) =>
-            prev.map((m) => m.id === tempId ? { ...res.message!, isPending: false } : m)
-          );
+          setMessages((prev) => {
+            const existsByServerId = prev.some((m) => m.id === res.message!.id);
+            if (existsByServerId) return prev;
+
+            const optimisticIdx = prev.findIndex((m) => m.id === tempId);
+            if (optimisticIdx === -1) {
+              // If fetch replaced state before ack arrived, still keep the sent message visible.
+              return sortMessagesByCreatedAt([...prev, { ...res.message!, isPending: false }]);
+            }
+
+            return prev.map((m) =>
+              m.id === tempId ? { ...res.message!, isPending: false } : m
+            );
+          });
         } else {
           setMessages((prev) =>
             prev.map((m) => m.id === tempId ? { ...m, isPending: false, isFailed: true } : m)

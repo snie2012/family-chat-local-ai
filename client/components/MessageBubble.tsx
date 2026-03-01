@@ -65,6 +65,11 @@ export function MessageBubble({ message, currentUser, showSenderName, onRetry, o
     ? "typing..."
     : formatTime(message.createdAt);
 
+  const openReactionPicker = () => {
+    if (message.isPending || message.isFailed) return;
+    setShowPicker(true);
+  };
+
   return (
     <View style={[styles.row, isOwn ? styles.rowRight : styles.rowLeft]}>
       <View style={styles.bubbleWrapper}>
@@ -94,7 +99,7 @@ export function MessageBubble({ message, currentUser, showSenderName, onRetry, o
 
         <TouchableOpacity
           activeOpacity={1}
-          onLongPress={() => !message.isPending && !message.isFailed && setShowPicker(true)}
+          onLongPress={openReactionPicker}
           delayLongPress={400}
         >
           <View style={bubbleStyle}>

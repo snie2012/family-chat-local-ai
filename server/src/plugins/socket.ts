@@ -29,6 +29,10 @@ interface AuthenticatedSocket extends Socket {
   };
 }
 
+type SendMessageAck =
+  | { ok: true; message: Record<string, unknown> }
+  | { ok: false; error: string };
+
 export function createSocketServer(
   httpServer: HttpServer,
   app: FastifyInstance
@@ -103,7 +107,7 @@ export function createSocketServer(
       "send_message",
       async (
         { conversationId, body }: { conversationId: string; body: string },
-        ack?: (result: { ok: boolean; message?: Record<string, unknown>; error?: string }) => void
+        ack?: (result: SendMessageAck) => void
       ) => {
         if (!body?.trim()) {
           ack?.({ ok: false, error: "Empty message" });
@@ -135,7 +139,7 @@ export function createSocketServer(
 
           // Acknowledge success to sender with the saved message so the client can
           // replace the optimistic message in-place (no duplicate, no race condition)
-          ack?.({ ok: true, message: { ...message, reactions: [] } as Record<string, unknown> });
+          ack?.({ ok: true, message: { ...message, reactions: [] } });
 
           // Push notifications to members who may be offline
           const members = await prisma.conversationMember.findMany({
